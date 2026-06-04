@@ -80,6 +80,22 @@
 .auto-note svg { color: var(--brand); flex: none; }
 .scan-body .btn-lg { margin-top: auto; }
 
+/* sección de varias llaves (retiro múltiple) */
+.keys-section { border: 1px solid var(--line); background: var(--surface-2); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 13px; }
+.keys-head { display: flex; align-items: center; gap: 9px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.01em; white-space: nowrap; }
+.keys-count { display: inline-grid; place-items: center; min-width: 21px; height: 21px; padding: 0 6px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 11.5px; font-weight: 700; }
+.keys-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.keychip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 6px 5px 11px; font-size: 13px; }
+.keychip b { font-size: 14px; }
+.keychip small { color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; }
+.keychip button { width: 19px; height: 19px; border-radius: 50%; border: 0; background: var(--surface-3); color: var(--ink-soft); display: grid; place-items: center; flex: none; }
+.keychip button:hover { background: var(--closed-bg); color: var(--closed); }
+.keychip.sm { background: var(--surface-2); padding: 5px 11px; }
+.add-key { padding: 10px; font-size: 13.5px; white-space: nowrap; }
+.dup-note { font-size: 12px; color: var(--closed); }
+.done-keys { display: flex; flex-wrap: wrap; gap: 7px; }
+.dc-row.col { flex-direction: column; align-items: flex-start; gap: 9px; padding: 13px 0; }
+
 /* entrega — coincidencias */
 .match-list { display: flex; flex-direction: column; gap: 10px; }
 .match-card { display: block; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 15px; box-shadow: var(--shadow-sm); }
@@ -100,7 +116,7 @@
 .done-ring { width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; color: white; }
 .done-ring.open { background: var(--ok); box-shadow: 0 0 0 10px var(--ok-bg); }
 .done-ring.closed { background: var(--closed); box-shadow: 0 0 0 10px var(--closed-bg); }
-.scan-body.done h1 { font-family: var(--serif); font-weight: 500; font-size: 27px; margin: 8px 0 0; }
+.scan-body.done h1 { font-family: var(--serif); font-weight: 500; font-size: 27px; line-height: 1.12; margin: 8px 0 2px; }
 .scan-body.done > p { margin: 0; color: var(--ink-soft); font-size: 14.5px; line-height: 1.5; }
 .done-card { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px 16px; margin-top: 6px; }
 .dc-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }

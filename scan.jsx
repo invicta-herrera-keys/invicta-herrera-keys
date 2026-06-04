@@ -36,13 +36,13 @@ function ScanApp() {
         {step === "retiro" && (
           <RetiroForm
             onCancel={() => setStep("home")}
-            onDone={(row) => { setDone({ tipo: "retiro", row }); setStep("done"); }}
+            onDone={(rows) => { setDone({ tipo: "retiro", rows }); setStep("done"); }}
           />
         )}
         {step === "entrega" && (
           <EntregaForm
             onCancel={() => setStep("home")}
-            onDone={(row) => { setDone({ tipo: "entrega", row }); setStep("done"); }}
+            onDone={(row) => { setDone({ tipo: "entrega", rows: [row] }); setStep("done"); }}
           />
         )}
         {step === "done" && (
@@ -80,17 +80,33 @@ function ScanHome({ onPick }) {
 
 /* ---------------- Retiro ---------------- */
 function RetiroForm({ onCancel, onDone }) {
-  const [f, setF] = useState({ persona: "", empresa: "", dpto: "", nivel: "", documento: "", celular: "" });
+  const [f, setF] = useState({ persona: "", empresa: "", documento: "", celular: "" });
+  const [nivel, setNivel] = useState("");
+  const [dpto, setDpto] = useState("");
+  const [llaves, setLlaves] = useState([]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const ok = f.persona.trim() && f.documento.trim() && f.empresa.trim() && f.dpto.trim() && f.nivel.trim();
 
   const NIVELES = Array.from({ length: 7 }, (_, i) => String(i + 1));
   const DEPTOS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 
+  const personaOk = f.persona.trim() && f.documento.trim() && f.empresa.trim();
+  const selOk = nivel && dpto;
+  const dupActual = selOk && llaves.some((l) => l.nivel === nivel && l.dpto === dpto);
+  const pendiente = selOk && !dupActual ? [{ nivel, dpto }] : [];
+  const todas = [...llaves, ...pendiente];
+  const ok = personaOk && todas.length > 0;
+
+  function agregar() {
+    if (!selOk || dupActual) return;
+    setLlaves([...llaves, { nivel, dpto }]);
+    setNivel(""); setDpto("");
+  }
+  function quitar(i) { setLlaves(llaves.filter((_, idx) => idx !== i)); }
+
   function submit() {
     if (!ok) return;
-    const row = KeyDB.crearRetiro(f);
-    onDone(row);
+    const rows = todas.map((l) => KeyDB.crearRetiro({ ...f, nivel: l.nivel, dpto: l.dpto }));
+    onDone(rows);
   }
 
   return (
@@ -112,27 +128,49 @@ function RetiroForm({ onCancel, onDone }) {
             <input className="input mono" value={f.celular} onChange={set("celular")} placeholder="981 123 456" inputMode="tel" type="tel" />
           </div>
         </Field>
-        <div className="form-row">
-          <Field label="Nivel / piso">
-            <select className="select" value={f.nivel} onChange={set("nivel")}>
-              <option value="">Elegir…</option>
-              {NIVELES.map((n) => <option key={n} value={n}>Nivel {n}</option>)}
-            </select>
-          </Field>
-          <Field label="Departamento">
-            <select className="select" value={f.dpto} onChange={set("dpto")} disabled={!f.nivel}>
-              <option value="">{f.nivel ? "Elegir…" : "Elegí nivel"}</option>
-              {DEPTOS.map((d) => <option key={d} value={d}>Depto {d}</option>)}
-            </select>
-          </Field>
+
+        <div className="keys-section">
+          <div className="keys-head">
+            <span>Llaves a retirar</span>
+            {todas.length > 0 && <span className="keys-count">{todas.length}</span>}
+          </div>
+          {llaves.length > 0 && (
+            <div className="keys-chips">
+              {llaves.map((l, i) => (
+                <span className="keychip" key={i}>
+                  <b className="mono">{l.dpto}</b><small>Nivel {l.nivel}</small>
+                  <button type="button" onClick={() => quitar(i)} aria-label="Quitar"><Icon.x style={{ width: 12, height: 12 }} /></button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="form-row">
+            <Field label="Nivel / piso">
+              <select className="select" value={nivel} onChange={(e) => { setNivel(e.target.value); setDpto(""); }}>
+                <option value="">Elegir…</option>
+                {NIVELES.map((n) => <option key={n} value={n}>Nivel {n}</option>)}
+              </select>
+            </Field>
+            <Field label="Departamento">
+              <select className="select" value={dpto} onChange={(e) => setDpto(e.target.value)} disabled={!nivel}>
+                <option value="">{nivel ? "Elegir…" : "Elegí nivel"}</option>
+                {DEPTOS.map((d) => <option key={d} value={d}>Depto {d}</option>)}
+              </select>
+            </Field>
+          </div>
+          {dupActual && <div className="dup-note">Esa llave ya está en la lista.</div>}
+          <button type="button" className="btn btn-ghost btn-block add-key" disabled={!selOk || dupActual} onClick={agregar}>
+            + Agregar otra llave
+          </button>
         </div>
+
         <div className="auto-note">
           <Icon.clock style={{ width: 16, height: 16 }} />
           La fecha y hora se registran automáticamente al confirmar.
         </div>
       </div>
       <button className="btn btn-primary btn-block btn-lg" disabled={!ok} onClick={submit}>
-        Confirmar retiro
+        {todas.length > 1 ? `Confirmar retiro de ${todas.length} llaves` : "Confirmar retiro"}
       </button>
     </div>
   );
@@ -233,23 +271,59 @@ function BackRow({ title, onCancel }) {
 
 function DoneScreen({ data, onReset }) {
   const retiro = data.tipo === "retiro";
-  const r = data.row;
+  const rows = data.rows || (data.row ? [data.row] : []);
+  const r = rows[0];
+  const multi = rows.length > 1;
+
+  if (retiro) {
+    return (
+      <div className="scan-body done">
+        <div className="done-ring open">
+          <Icon.check style={{ width: 40, height: 40 }} />
+        </div>
+        <h1>{multi ? "Llaves retiradas" : "Llave retirada"}</h1>
+        <p>{multi
+          ? `${rows.length} llaves quedaron asentadas en el site con estado Abierto.`
+          : "El registro quedó asentado en el site con estado Abierto."}</p>
+        <div className="done-card">
+          {multi ? (
+            <div className="dc-row col">
+              <span>Departamentos ({rows.length})</span>
+              <div className="done-keys">
+                {rows.map((x, i) => (
+                  <span className="keychip sm" key={i}><b className="mono">{x.dpto}</b><small>Nivel {x.nivel}</small></span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="dc-row"><span>Departamento</span><b className="mono">{r.dpto}{r.nivel ? ` · Nivel ${r.nivel}` : ""}</b></div>
+          )}
+          <div className="dc-row"><span>Empresa / Contratista</span><b>{r.empresa}</b></div>
+          <div className="dc-row"><span>Retiró</span><b>{r.persona}</b></div>
+          {r.documento ? <div className="dc-row"><span>Documento</span><b className="mono">{r.documento}</b></div> : null}
+          {r.celular ? <div className="dc-row"><span>Celular</span><b className="mono">{r.celular}</b></div> : null}
+          <div className="dc-row"><span>Retiro</span><b>{fmtFecha(r.retiroAt)}</b></div>
+          <div className="dc-row"><span>Estado</span><StatusBadge estado="abierto" /></div>
+        </div>
+        <button className="btn btn-ghost btn-block" onClick={onReset}>Listo</button>
+      </div>
+    );
+  }
+
   return (
     <div className="scan-body done">
-      <div className={"done-ring " + (retiro ? "open" : "closed")}>
+      <div className="done-ring closed">
         <Icon.check style={{ width: 40, height: 40 }} />
       </div>
-      <h1>{retiro ? "Llave retirada" : "Llave entregada"}</h1>
-      <p>{retiro
-        ? "El registro quedó asentado en el site con estado Abierto."
-        : `Registro cerrado. El departamento estuvo ${diasTexto(r.dias)} en poder de la empresa.`}</p>
+      <h1>Llave entregada</h1>
+      <p>{`Registro cerrado. El departamento estuvo ${diasTexto(r.dias)} en poder de la empresa.`}</p>
       <div className="done-card">
         <div className="dc-row"><span>Departamento</span><b className="mono">{r.dpto}{r.nivel ? ` · Nivel ${r.nivel}` : ""}</b></div>
         <div className="dc-row"><span>Empresa / Contratista</span><b>{r.empresa}</b></div>
-        <div className="dc-row"><span>{retiro ? "Retiró" : "Entregó"}</span><b>{retiro ? r.persona : (r.entregaPersona || r.persona)}</b></div>
+        <div className="dc-row"><span>Entregó</span><b>{r.entregaPersona || r.persona}</b></div>
         {r.documento ? <div className="dc-row"><span>Documento</span><b className="mono">{r.documento}</b></div> : null}
         {r.celular ? <div className="dc-row"><span>Celular</span><b className="mono">{r.celular}</b></div> : null}
-        <div className="dc-row"><span>{retiro ? "Retiro" : "Entrega"}</span><b>{fmtFecha(retiro ? r.retiroAt : r.entregaAt)}</b></div>
+        <div className="dc-row"><span>Entrega</span><b>{fmtFecha(r.entregaAt)}</b></div>
         <div className="dc-row"><span>Estado</span><StatusBadge estado={r.estado} /></div>
       </div>
       <button className="btn btn-ghost btn-block" onClick={onReset}>Listo</button>
