@@ -82,7 +82,7 @@ function Registro() {
     const n = (s) => (s || "").toLowerCase();
     return rows.filter((r) => {
       if (f.q) {
-        const hay = [r.persona, r.empresa, r.dpto, r.nivel, r.entregaPersona, r.documento].map(n).join(" ");
+        const hay = [r.persona, r.empresa, r.dpto, r.nivel, r.entregaPersona, r.documento, r.celular].map(n).join(" ");
         if (!hay.includes(n(f.q))) return false;
       }
       if (f.empresa && r.empresa !== f.empresa) return false;
@@ -180,7 +180,7 @@ function Registro() {
           <table className="reg-table">
             <thead>
               <tr>
-                <th>Estado</th><th>Depto / Nivel</th><th>Empresa / Contratista</th><th>A cargo</th><th>Documento de identidad</th>
+                <th>Estado</th><th>Depto / Nivel</th><th>Empresa / Contratista</th><th>A cargo</th><th>Documento de identidad</th><th>Celular</th>
                 <th>Retiro</th><th>Entrega</th><th className="ta-r">Días</th><th></th>
               </tr>
             </thead>
@@ -196,6 +196,7 @@ function Registro() {
                       <td>{r.empresa}</td>
                       <td>{r.persona}</td>
                       <td className="mono muted">{r.documento || "—"}</td>
+                      <td className="mono muted">{r.celular || "—"}</td>
                       <td className="muted">{fmtFecha(r.retiroAt)}</td>
                       <td className="muted">{r.estado === "abierto" ? <span className="dash">en curso</span> : fmtFecha(r.entregaAt)}</td>
                       <td className="ta-r"><b className={r.estado === "abierto" ? "dias-open" : ""}>{diasTexto(dias)}</b></td>
@@ -212,7 +213,7 @@ function Registro() {
                     </tr>
                     {isOpen && (
                       <tr className="detail-row">
-                        <td colSpan={9}>
+                        <td colSpan={10}>
                           <div className="detail">
                             {r.entregaPersona && r.entregaPersona !== r.persona && (
                               <div className="d-item"><span>Entregó</span><b>{r.entregaPersona}</b></div>
@@ -229,7 +230,7 @@ function Registro() {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={9}><div className="empty">No hay registros que coincidan con los filtros.</div></td></tr>
+                <tr><td colSpan={10}><div className="empty">No hay registros que coincidan con los filtros.</div></td></tr>
               )}
             </tbody>
           </table>

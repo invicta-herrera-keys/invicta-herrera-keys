@@ -38,7 +38,7 @@ function ReportSheet({ rows, filtros }) {
       <table className="rep-table">
         <thead>
           <tr>
-            <th>Estado</th><th>Dpto</th><th>Nivel</th><th>Empresa / Contratista</th><th>A cargo</th><th>Documento de identidad</th>
+            <th>Estado</th><th>Dpto</th><th>Nivel</th><th>Empresa / Contratista</th><th>A cargo</th><th>Documento de identidad</th><th>Celular</th>
             <th>Retiro</th><th>Entrega</th><th>Días</th><th>Observaciones</th>
           </tr>
         </thead>
@@ -51,6 +51,7 @@ function ReportSheet({ rows, filtros }) {
               <td>{r.empresa}</td>
               <td>{r.persona}</td>
               <td className="mono">{r.documento || "—"}</td>
+              <td className="mono">{r.celular || "—"}</td>
               <td>{fmtFecha(r.retiroAt)}</td>
               <td>{r.estado === "abierto" ? "—" : fmtFecha(r.entregaAt)}</td>
               <td className="b">{r.estado === "abierto" ? diasTexto(KeyDB.diasAbierto(r)) + " (curso)" : diasTexto(r.dias)}</td>

@@ -80,12 +80,12 @@ function ScanHome({ onPick }) {
 
 /* ---------------- Retiro ---------------- */
 function RetiroForm({ onCancel, onDone }) {
-  const [f, setF] = useState({ persona: "", empresa: "", dpto: "", nivel: "", documento: "" });
+  const [f, setF] = useState({ persona: "", empresa: "", dpto: "", nivel: "", documento: "", celular: "" });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const ok = f.persona.trim() && f.documento.trim() && f.empresa.trim() && f.dpto.trim() && f.nivel.trim();
 
   const NIVELES = Array.from({ length: 7 }, (_, i) => String(i + 1));
-  const DEPTOS = Array.from({ length: 11 }, (_, i) => String(i + 1));
+  const DEPTOS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 
   function submit() {
     if (!ok) return;
@@ -105,6 +105,12 @@ function RetiroForm({ onCancel, onDone }) {
         </Field>
         <Field label="Empresa / Contratista">
           <input className="input" value={f.empresa} onChange={set("empresa")} placeholder="Ej. Pinturas del Valle" />
+        </Field>
+        <Field label="Número de celular">
+          <div className="phone-input">
+            <span className="phone-prefix mono">+595</span>
+            <input className="input mono" value={f.celular} onChange={set("celular")} placeholder="981 123 456" inputMode="tel" type="tel" />
+          </div>
         </Field>
         <div className="form-row">
           <Field label="Nivel / piso">
@@ -242,6 +248,7 @@ function DoneScreen({ data, onReset }) {
         <div className="dc-row"><span>Empresa / Contratista</span><b>{r.empresa}</b></div>
         <div className="dc-row"><span>{retiro ? "Retiró" : "Entregó"}</span><b>{retiro ? r.persona : (r.entregaPersona || r.persona)}</b></div>
         {r.documento ? <div className="dc-row"><span>Documento</span><b className="mono">{r.documento}</b></div> : null}
+        {r.celular ? <div className="dc-row"><span>Celular</span><b className="mono">{r.celular}</b></div> : null}
         <div className="dc-row"><span>{retiro ? "Retiro" : "Entrega"}</span><b>{fmtFecha(retiro ? r.retiroAt : r.entregaAt)}</b></div>
         <div className="dc-row"><span>Estado</span><StatusBadge estado={r.estado} /></div>
       </div>

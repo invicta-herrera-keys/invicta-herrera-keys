@@ -52,11 +52,11 @@
     const now = Date.now();
     const d = (days, h = 0) => new Date(now - days * 864e5 - h * 36e5).toISOString();
     return [
-      { id: "r1", dpto: "4", nivel: "3", empresa: "Electro Andina", documento: "28.456.789", persona: "Martín Quispe", retiroAt: d(6, 2), estado: "cerrado", entregaAt: d(4, 1), entregaPersona: "Martín Quispe", observaciones: "Se finalizó el tendido eléctrico del estar. Sin novedades.", dias: 2 },
-      { id: "r2", dpto: "9", nivel: "5", empresa: "Pinturas del Valle", documento: "33.120.654", persona: "Lucía Romero", retiroAt: d(2, 5), estado: "abierto", entregaAt: null, entregaPersona: null, observaciones: null, dias: null },
-      { id: "r3", dpto: "2", nivel: "1", empresa: "Aberturas Sur", documento: "30.987.123", persona: "Diego Funes", retiroAt: d(1, 3), estado: "abierto", entregaAt: null, entregaPersona: null, observaciones: null, dias: null },
-      { id: "r4", dpto: "11", nivel: "7", empresa: "Electro Andina", documento: "28.456.789", persona: "Martín Quispe", retiroAt: d(11, 0), estado: "cerrado", entregaAt: d(8, 4), entregaPersona: "Carla Vega", observaciones: "Faltaba una tapa de toma en cocina, se reportó al capataz.", dias: 3 },
-      { id: "r5", dpto: "6", nivel: "2", empresa: "Hidromax Sanitarios", documento: "26.741.300", persona: "Pablo Ledesma", retiroAt: d(0, 6), estado: "abierto", entregaAt: null, entregaPersona: null, observaciones: null, dias: null },
+      { id: "r1", dpto: "4", nivel: "3", empresa: "Electro Andina", documento: "28.456.789", persona: "Martín Quispe", retiroAt: d(6, 2), celular: "+595 981 234 567", estado: "cerrado", entregaAt: d(4, 1), entregaPersona: "Martín Quispe", observaciones: "Se finalizó el tendido eléctrico del estar. Sin novedades.", dias: 2 },
+      { id: "r2", dpto: "9", nivel: "5", empresa: "Pinturas del Valle", documento: "33.120.654", persona: "Lucía Romero", retiroAt: d(2, 5), celular: "+595 971 112 334", estado: "abierto", entregaAt: null, entregaPersona: null, observaciones: null, dias: null },
+      { id: "r3", dpto: "2", nivel: "1", empresa: "Aberturas Sur", documento: "30.987.123", persona: "Diego Funes", retiroAt: d(1, 3), celular: "+595 985 776 210", estado: "abierto", entregaAt: null, entregaPersona: null, observaciones: null, dias: null },
+      { id: "r4", dpto: "11", nivel: "7", empresa: "Electro Andina", documento: "28.456.789", persona: "Martín Quispe", retiroAt: d(11, 0), celular: "+595 981 234 567", estado: "cerrado", entregaAt: d(8, 4), entregaPersona: "Carla Vega", observaciones: "Faltaba una tapa de toma en cocina, se reportó al capataz.", dias: 3 },
+      { id: "r5", dpto: "6", nivel: "2", empresa: "Hidromax Sanitarios", documento: "26.741.300", persona: "Pablo Ledesma", retiroAt: d(0, 6), celular: "+595 992 050 418", estado: "abierto", entregaAt: null, entregaPersona: null, observaciones: null, dias: null },
     ];
   }
 
@@ -124,11 +124,13 @@
       return this.abiertos().filter((r) => (dpto ? n(r.dpto) === n(dpto) : true) && (empresa ? n(r.empresa) === n(empresa) : true));
     },
 
-    crearRetiro({ persona, empresa, dpto, nivel, documento }) {
+    crearRetiro({ persona, empresa, dpto, nivel, documento, celular }) {
+      const cel = (celular || "").trim();
       const row = {
         id: uid(),
         dpto: (dpto || "").trim(), nivel: (nivel || "").trim(),
         empresa: (empresa || "").trim(), documento: (documento || "").trim(),
+        celular: cel ? "+595 " + cel.replace(/^\+?595\s*/, "") : "",
         persona: (persona || "").trim(),
         retiroAt: new Date().toISOString(),
         estado: "abierto", entregaAt: null, entregaPersona: null, observaciones: null, dias: null,
