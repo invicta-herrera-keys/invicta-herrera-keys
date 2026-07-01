@@ -42,7 +42,7 @@ function ScanApp() {
         {step === "entrega" && (
           <EntregaForm
             onCancel={() => setStep("home")}
-            onDone={(row) => { setDone({ tipo: "entrega", rows: [row] }); setStep("done"); }}
+            onDone={(rows) => { setDone({ tipo: "entrega", rows }); setStep("done"); }}
           />
         )}
         {step === "done" && (
@@ -69,7 +69,7 @@ function ScanHome({ onPick }) {
         </button>
         <button className="actioncard entregar" onClick={() => onPick("entrega")}>
           <span className="ac-ico"><Icon.check style={{ width: 26, height: 26 }} /></span>
-          <span className="ac-tx"><b>Entregar una llave</b><small>Devolución y observaciones</small></span>
+          <span className="ac-tx"><b>Entregar llaves</b><small>Devolución y observaciones</small></span>
           <span className="ac-arr">→</span>
         </button>
       </div>
@@ -99,14 +99,15 @@ function RetiroForm({ onCancel, onDone }) {
   const DEPTOS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 
   const personaOk = f.persona.trim() && f.documento.trim() && f.empresa.trim();
-  const selOk = nivel && dpto;
-  const dupActual = selOk && llaves.some((l) => l.nivel === nivel && l.dpto === dpto);
-  const pendiente = selOk && !dupActual ? [{ nivel, dpto }] : [];
+  const enUsoActual = nivel && dpto ? KeyDB.abiertaDe({ nivel, dpto }) : null;
+  const dupActual = nivel && dpto && llaves.some((l) => l.nivel === nivel && l.dpto === dpto);
+  const selOk = nivel && dpto && !enUsoActual && !dupActual;
+  const pendiente = selOk ? [{ nivel, dpto }] : [];
   const todas = [...llaves, ...pendiente];
   const ok = personaOk && todas.length > 0;
 
   function agregar() {
-    if (!selOk || dupActual) return;
+    if (!selOk) return;
     setLlaves([...llaves, { nivel, dpto }]);
     setNivel(""); setDpto("");
   }
@@ -114,8 +115,12 @@ function RetiroForm({ onCancel, onDone }) {
 
   function submit() {
     if (!ok) return;
-    const rows = todas.map((l) => KeyDB.crearRetiro({ ...f, nivel: l.nivel, dpto: l.dpto }));
-    onDone(rows);
+    const rows = [];
+    for (const l of todas) {
+      const r = KeyDB.crearRetiro({ ...f, nivel: l.nivel, dpto: l.dpto });
+      if (r && !r.error) rows.push(r);
+    }
+    if (rows.length) onDone(rows);
   }
 
   return (
@@ -170,8 +175,14 @@ function RetiroForm({ onCancel, onDone }) {
               </select>
             </Field>
           </div>
-          {dupActual && <div className="dup-note">Esa llave ya está en la lista.</div>}
-          <button type="button" className="btn btn-ghost btn-block add-key" disabled={!selOk || dupActual} onClick={agregar}>
+          {enUsoActual && (
+            <div className="inuse-note">
+              <Icon.lock style={{ width: 14, height: 14 }} />
+              <span>Llave <b>{dpto} · Nivel {nivel}</b> en uso por <b>{enUsoActual.empresa}</b> ({enUsoActual.persona}) desde {fmtFechaCorta(enUsoActual.retiroAt)}. No se puede retirar hasta que se devuelva.</span>
+            </div>
+          )}
+          {dupActual && !enUsoActual && <div className="dup-note">Esa llave ya está en la lista.</div>}
+          <button type="button" className="btn btn-ghost btn-block add-key" disabled={!selOk} onClick={agregar}>
             + Agregar otra llave
           </button>
         </div>
@@ -188,10 +199,11 @@ function RetiroForm({ onCancel, onDone }) {
   );
 }
 
-/* ---------------- Entrega ---------------- */
+/* ---------------- Entrega (una o varias llaves) ---------------- */
 function EntregaForm({ onCancel, onDone }) {
   const [q, setQ] = useState({ dpto: "", empresa: "" });
-  const [sel, setSel] = useState(null);
+  const [picked, setPicked] = useState([]); // ids seleccionados
+  const [confirming, setConfirming] = useState(false);
   const [obs, setObs] = useState("");
   const [persona, setPersona] = useState("");
   const setQk = (k) => (e) => setQ({ ...q, [k]: e.target.value });
@@ -199,53 +211,57 @@ function EntregaForm({ onCancel, onDone }) {
   const matches = (q.dpto.trim() || q.empresa.trim())
     ? KeyDB.buscarAbiertos({ dpto: q.dpto, empresa: q.empresa })
     : [];
+  const pickedRows = KeyDB.abiertos().filter((r) => picked.includes(r.id));
 
-  function confirmar() {
-    if (!sel) return;
-    const row = KeyDB.cerrarRegistro(sel.id, { observaciones: obs, entregaPersona: persona });
-    onDone(row);
+  function toggle(id) {
+    setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
   }
 
-  if (sel) {
-    const dias = KeyDB.diasAbierto(sel);
+  function confirmar() {
+    if (!pickedRows.length) return;
+    const rows = KeyDB.cerrarRegistros(pickedRows.map((r) => r.id), { observaciones: obs, entregaPersona: persona });
+    if (rows.length) onDone(rows);
+  }
+
+  // Paso 2: confirmar entrega (observaciones aplican a todas las seleccionadas)
+  if (confirming && pickedRows.length) {
+    const multi = pickedRows.length > 1;
     return (
       <div className="scan-body">
-        <BackRow title="Entregar llave" onCancel={() => setSel(null)} />
-        <div className="match-card sel">
-          <div className="mc-top">
-            <span className="mc-dpto mono">Dpto {sel.dpto}</span>
-            <span className="badge open"><span className="pip" />Abierto</span>
+        <BackRow title={multi ? "Entregar llaves" : "Entregar llave"} onCancel={() => setConfirming(false)} />
+        <div className="sel-summary">
+          <span className="ss-lbl">{multi ? `${pickedRows.length} llaves seleccionadas` : "Llave seleccionada"}</span>
+          <div className="keys-chips">
+            {pickedRows.map((m) => (
+              <span className="keychip sm" key={m.id}><b className="mono">{m.dpto}</b><small>Nivel {m.nivel}</small></span>
+            ))}
           </div>
-          <div className="mc-rows">
-            <div><span>Empresa / Contr.</span><b>{sel.empresa}</b></div>
-            <div><span>Retiró</span><b>{sel.persona}</b></div>
-            <div><span>Desde</span><b>{fmtFecha(sel.retiroAt)}</b></div>
-            <div><span>Tiempo</span><b>{diasTexto(dias)}</b></div>
-          </div>
+          <div className="ss-meta">{pickedRows[0].empresa} · retiró {pickedRows[0].persona}</div>
         </div>
         <div className="form-stack">
           <Field label="Quién entrega" hint="Si lo entrega otra persona de la empresa, anotalo acá.">
-            <input className="input" value={persona} onChange={(e) => setPersona(e.target.value)} placeholder={sel.persona} />
+            <input className="input" value={persona} onChange={(e) => setPersona(e.target.value)} placeholder={pickedRows[0].persona} />
           </Field>
-          <Field label="Observaciones" hint="Algo de interés o que haya pasado mientras tuvieron la llave (opcional).">
+          <Field label="Observaciones" hint={multi ? "Se guardan en todas las llaves entregadas (opcional)." : "Algo de interés o que haya pasado mientras tuvieron la llave (opcional)."}>
             <textarea className="textarea" value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ej. Se completó la instalación. Quedó una marca en el piso del baño…" />
           </Field>
         </div>
         <button className="btn btn-primary btn-block btn-lg" onClick={confirmar}>
-          Confirmar entrega
+          {multi ? `Confirmar entrega de ${pickedRows.length} llaves` : "Confirmar entrega"}
         </button>
       </div>
     );
   }
 
+  // Paso 1: buscar y seleccionar (una o varias)
   return (
     <div className="scan-body">
-      <BackRow title="Entregar llave" onCancel={onCancel} />
-      <p className="scan-lead">Buscá tu registro abierto por departamento y/o empresa.</p>
+      <BackRow title="Entregar llaves" onCancel={onCancel} />
+      <p className="scan-lead">Buscá por departamento y/o empresa. Si ponés la empresa, podés seleccionar varias llaves a la vez.</p>
       <div className="form-stack">
         <div className="form-row">
           <Field label="N.º de departamento">
-            <input className="input mono" value={q.dpto} onChange={setQk("dpto")} placeholder="301" />
+            <input className="input mono" value={q.dpto} onChange={setQk("dpto")} placeholder="A" />
           </Field>
           <Field label="Empresa / Contratista">
             <input className="input" value={q.empresa} onChange={setQk("empresa")} placeholder="(opcional)" />
@@ -257,16 +273,35 @@ function EntregaForm({ onCancel, onDone }) {
         {(q.dpto.trim() || q.empresa.trim()) && matches.length === 0 && (
           <div className="empty-mini">No hay llaves abiertas que coincidan. Revisá el número o la empresa.</div>
         )}
-        {matches.map((m) => (
-          <button key={m.id} className="match-card tap" onClick={() => setSel(m)}>
-            <div className="mc-top">
-              <span className="mc-dpto mono">Dpto {m.dpto}</span>
-              <span className="mc-arr">Entregar →</span>
-            </div>
-            <div className="mc-sub">{m.empresa} · {m.persona} · {diasTexto(KeyDB.diasAbierto(m))}</div>
-          </button>
-        ))}
+        {matches.length > 1 && (
+          <div className="match-tools">
+            <span>{picked.length} de {matches.length} seleccionadas</span>
+            <button className="link-btn" onClick={() => setPicked(picked.length === matches.length ? [] : matches.map((m) => m.id))}>
+              {picked.length === matches.length ? "Quitar todas" : "Seleccionar todas"}
+            </button>
+          </div>
+        )}
+        {matches.map((m) => {
+          const on = picked.includes(m.id);
+          return (
+            <button key={m.id} className={"match-card tap selectable" + (on ? " on" : "")} onClick={() => toggle(m.id)}>
+              <span className={"mc-check" + (on ? " on" : "")}>{on ? <Icon.check style={{ width: 13, height: 13 }} /> : null}</span>
+              <span className="mc-body">
+                <span className="mc-top">
+                  <span className="mc-dpto mono">Dpto {m.dpto} · Nivel {m.nivel}</span>
+                </span>
+                <span className="mc-sub">{m.empresa} · {m.persona} · {diasTexto(KeyDB.diasAbierto(m))}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {pickedRows.length > 0 && (
+        <button className="btn btn-primary btn-block btn-lg" onClick={() => setConfirming(true)}>
+          {pickedRows.length > 1 ? `Entregar ${pickedRows.length} llaves` : "Entregar llave"}
+        </button>
+      )}
     </div>
   );
 }
@@ -327,16 +362,29 @@ function DoneScreen({ data, onReset }) {
       <div className="done-ring closed">
         <Icon.check style={{ width: 40, height: 40 }} />
       </div>
-      <h1>Llave entregada</h1>
-      <p>{`Registro cerrado. El departamento estuvo ${diasTexto(r.dias)} en poder de la empresa.`}</p>
+      <h1>{multi ? "Llaves entregadas" : "Llave entregada"}</h1>
+      <p>{multi
+        ? `${rows.length} llaves fueron devueltas y cerradas en el registro.`
+        : `Registro cerrado. El departamento estuvo ${diasTexto(r.dias)} en poder de la empresa.`}</p>
       <div className="done-card">
-        <div className="dc-row"><span>Departamento</span><b className="mono">{r.dpto}{r.nivel ? ` · Nivel ${r.nivel}` : ""}</b></div>
+        {multi ? (
+          <div className="dc-row col">
+            <span>Departamentos ({rows.length})</span>
+            <div className="done-keys">
+              {rows.map((x, i) => (
+                <span className="keychip sm" key={i}><b className="mono">{x.dpto}</b><small>Nivel {x.nivel}</small></span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="dc-row"><span>Departamento</span><b className="mono">{r.dpto}{r.nivel ? ` · Nivel ${r.nivel}` : ""}</b></div>
+        )}
         <div className="dc-row"><span>Empresa / Contratista</span><b>{r.empresa}</b></div>
         <div className="dc-row"><span>Entregó</span><b>{r.entregaPersona || r.persona}</b></div>
         {r.documento ? <div className="dc-row"><span>Documento</span><b className="mono">{r.documento}</b></div> : null}
         {r.celular ? <div className="dc-row"><span>Celular</span><b className="mono">{r.celular}</b></div> : null}
         <div className="dc-row"><span>Entrega</span><b>{fmtFecha(r.entregaAt)}</b></div>
-        <div className="dc-row"><span>Estado</span><StatusBadge estado={r.estado} /></div>
+        <div className="dc-row"><span>Estado</span><StatusBadge estado="cerrado" /></div>
       </div>
       <button className="btn btn-ghost btn-block" onClick={onReset}>Listo</button>
     </div>

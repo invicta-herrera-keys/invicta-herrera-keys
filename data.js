@@ -135,7 +135,17 @@
       return [...map.values()];
     },
 
+    /* ¿Hay una llave (nivel+dpto) ya retirada y sin devolver? */
+    abiertaDe({ nivel, dpto } = {}) {
+      const n = (s) => (s || "").trim().toLowerCase();
+      return this.abiertos().find((r) => n(r.nivel) === n(nivel) && n(r.dpto) === n(dpto)) || null;
+    },
+    estaAbierta(sel) { return !!this.abiertaDe(sel); },
+
     crearRetiro({ persona, empresa, dpto, nivel, documento, celular }) {
+      // bloqueo de llaves en uso: no se puede retirar una llave que ya está abierta
+      const enUso = this.abiertaDe({ nivel, dpto });
+      if (enUso) return { error: "en_uso", existente: enUso };
       const cel = (celular || "").trim();
       const row = {
         id: uid(),
@@ -162,6 +172,24 @@
       });
       if (updated) {
         if (mode === "firebase") { notify(); colRef.doc(id).set(updated).catch((e) => console.warn("Firestore set:", e)); }
+        else { _saveLocal(cache); }
+      }
+      return updated;
+    },
+
+    /* cerrar varias llaves en un solo paso (misma entrega/observaciones) */
+    cerrarRegistros(ids, { observaciones, entregaPersona } = {}) {
+      const set = new Set(ids || []);
+      const updated = [];
+      const entregaAt = new Date().toISOString();
+      cache = (cache || []).map((r) => {
+        if (!set.has(r.id) || r.estado !== "abierto") return r;
+        const u = { ...r, estado: "cerrado", entregaAt, entregaPersona: (entregaPersona || "").trim() || r.persona, observaciones: (observaciones || "").trim() || null, dias: diffDias(r.retiroAt, entregaAt) };
+        updated.push(u);
+        return u;
+      });
+      if (updated.length) {
+        if (mode === "firebase") { notify(); updated.forEach((u) => colRef.doc(u.id).set(u).catch((e) => console.warn("Firestore set:", e))); }
         else { _saveLocal(cache); }
       }
       return updated;

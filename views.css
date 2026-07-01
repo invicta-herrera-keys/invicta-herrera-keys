@@ -110,6 +110,17 @@
 .mc-rows span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
 .mc-rows b { font-size: 14px; }
 .empty-mini { color: var(--ink-faint); font-size: 13.5px; text-align: center; padding: 18px; background: var(--surface-2); border-radius: 12px; }
+.match-tools { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--ink-faint); padding: 2px 2px 4px; }
+.match-card.selectable { display: flex; align-items: center; gap: 12px; }
+.match-card.selectable.on { border-color: var(--ok-line); background: var(--ok-bg); }
+.mc-check { width: 22px; height: 22px; flex: none; border-radius: 7px; border: 1.5px solid var(--line-strong); background: var(--surface); display: grid; place-items: center; color: #fff; }
+.mc-check.on { background: var(--ok); border-color: var(--ok); }
+.mc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sel-summary { background: var(--ok-bg); border: 1px solid var(--ok-line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.sel-summary .ss-lbl { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ok); }
+.sel-summary .ss-meta { font-size: 13px; color: var(--ink-soft); }
+.inuse-note { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.45; color: var(--closed); background: var(--closed-bg); border: 1px solid var(--closed-line); border-radius: 10px; padding: 10px 12px; }
+.inuse-note svg { flex: none; margin-top: 1px; }
 
 /* done */
 .scan-body.done { align-items: center; text-align: center; justify-content: center; gap: 14px; }
