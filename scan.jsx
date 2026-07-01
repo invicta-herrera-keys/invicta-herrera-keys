@@ -86,6 +86,15 @@ function RetiroForm({ onCancel, onDone }) {
   const [llaves, setLlaves] = useState([]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
+  // personas conocidas → autocompletar al volver a retirar
+  const conocidos = React.useMemo(() => KeyDB.personas(), []);
+  function onPersona(e) {
+    const val = e.target.value;
+    const hit = conocidos.find((p) => p.persona.trim().toLowerCase() === val.trim().toLowerCase());
+    if (hit) setF({ persona: hit.persona, documento: hit.documento || "", celular: (hit.celular || "").replace(/^\+?595\s*/, ""), empresa: hit.empresa || "" });
+    else setF({ ...f, persona: val });
+  }
+
   const NIVELES = Array.from({ length: 7 }, (_, i) => String(i + 1));
   const DEPTOS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 
@@ -113,8 +122,11 @@ function RetiroForm({ onCancel, onDone }) {
     <div className="scan-body">
       <BackRow title="Retirar llave" onCancel={onCancel} />
       <div className="form-stack">
-        <Field label="Nombre de quien retira">
-          <input className="input" value={f.persona} onChange={set("persona")} placeholder="Ej. Lucía Romero" />
+        <Field label="Nombre de quien retira" hint={conocidos.length ? "Si ya retiraste antes, elegí tu nombre y se completan tus datos." : null}>
+          <input className="input" list="personas-list" value={f.persona} onChange={onPersona} placeholder="Ej. Lucía Romero" />
+          <datalist id="personas-list">
+            {conocidos.map((p, i) => <option key={i} value={p.persona} />)}
+          </datalist>
         </Field>
         <Field label="Documento de identidad">
           <input className="input mono" value={f.documento} onChange={set("documento")} placeholder="Ej. 33.120.654" inputMode="numeric" />

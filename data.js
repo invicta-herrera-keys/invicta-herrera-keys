@@ -124,6 +124,17 @@
       return this.abiertos().filter((r) => (dpto ? n(r.dpto) === n(dpto) : true) && (empresa ? n(r.empresa) === n(empresa) : true));
     },
 
+    /* Personas conocidas (para autocompletar al volver a retirar) */
+    personas() {
+      const map = new Map();
+      this.all().forEach((r) => {
+        const key = (r.persona || "").trim().toLowerCase();
+        if (!key || map.has(key)) return;
+        map.set(key, { persona: r.persona, documento: r.documento || "", celular: r.celular || "", empresa: r.empresa || "" });
+      });
+      return [...map.values()];
+    },
+
     crearRetiro({ persona, empresa, dpto, nivel, documento, celular }) {
       const cel = (celular || "").trim();
       const row = {
